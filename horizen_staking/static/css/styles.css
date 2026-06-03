@@ -166,11 +166,12 @@ body {
 }
 .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); }
 .brand-mark {
-  width: 28px; height: 28px; border-radius: 8px; position: relative;
-  background: conic-gradient(from 200deg, var(--accent-soft), var(--accent-deep), var(--accent), var(--accent-soft));
-  box-shadow: 0 0 20px var(--accent-glow);
+  width: 28px; height: 28px;
+  /* White Zen mark for the default dark theme; the navy variant is swapped
+     in under [data-theme="light"] below so the logo stays legible either way. */
+  background: center / contain no-repeat url("../img/zenlogowhite.png");
 }
-.brand-mark::after { content: ""; position: absolute; inset: 6px; border-radius: 4px; background: var(--bg); }
+[data-theme="light"] .brand-mark { background-image: url("../img/zenlogo.png"); }
 .brand-text { font-weight: 900; letter-spacing: 0.17em; font-size: 0.92rem; }
 .brand-sub { color: var(--accent); font-weight: 500; letter-spacing: 0.1em; margin-left: 3px; }
 
