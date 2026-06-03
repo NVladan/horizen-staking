@@ -1,0 +1,24 @@
+[Unit]
+Description=Horizen tstZEN Staking dApp (gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=horizen
+Group=horizen
+WorkingDirectory=/opt/horizen-staking
+ExecStart=/opt/horizen-staking/.venv/bin/gunicorn \
+    --workers 2 \
+    --bind 127.0.0.1:8000 \
+    --access-logfile - \
+    --error-logfile - \
+    'horizen_staking:create_app()'
+Restart=always
+RestartSec=3
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
