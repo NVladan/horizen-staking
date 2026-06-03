@@ -65,6 +65,10 @@ else
 fi
 chown -R horizen:horizen "$APP_DIR"
 chmod 600 .env
+# adduser --system makes the home dir 0750, which blocks nginx (www-data) from
+# traversing it to serve /static/ (every asset 403s -> unstyled page). Grant
+# traverse-only on the home so nginx can reach the static tree; .env stays 0600.
+chmod o+x "$APP_DIR"
 
 echo ">>> [5/7] systemd service"
 cp deploy/horizen-staking.service /etc/systemd/system/
