@@ -14,14 +14,14 @@ Native setup: **gunicorn + systemd + nginx**, served over **HTTP on the server I
 Contabo's cheapest Cloud VPS is plenty. Storage: **75 GB NVMe** (faster; capacity
 is irrelevant for this app). Image: **Ubuntu 24.04**. Then SSH in: `ssh root@<server-ip>`.
 
-### 2. Base packages + Node (Node is only needed once, to compile the ABIs)
+### 2. Base packages
 ```bash
 apt update && apt -y upgrade
 apt -y install python3 python3-venv python3-pip nginx git curl ufw
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt -y install nodejs
 adduser --system --group --home /opt/horizen-staking horizen
 ```
+> No Node/solc here: the compiled contract ABIs ship in `build/`, so the server
+> never runs the Solidity toolchain (one less network dependency to fail on).
 
 ### 3. Get the code
 ```bash
@@ -37,13 +37,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt gunicorn
 ```
 
-### 5. Compile the contract ABIs (one-time; needs Node + downloads solc)
-```bash
-npm install
-.venv/bin/python -m scripts.compile     # writes build/*.json
-```
-
-### 6. Create `.env` (live mainnet contracts; admin LOCKED; HTTP so secure-cookie off)
+### 5. Create `.env` (live mainnet contracts; admin LOCKED; HTTP so secure-cookie off)
 ```bash
 cat > .env <<'EOF'
 CHAIN_ID=26514
@@ -77,7 +71,7 @@ chown -R horizen:horizen /opt/horizen-staking
 chmod 600 .env
 ```
 
-### 7. systemd service (auto-start + restart)
+### 6. systemd service (auto-start + restart)
 ```bash
 cp deploy/horizen-staking.service /etc/systemd/system/
 systemctl daemon-reload
@@ -85,7 +79,7 @@ systemctl enable --now horizen-staking
 systemctl status horizen-staking --no-pager     # should be "active (running)"
 ```
 
-### 8. nginx reverse proxy
+### 7. nginx reverse proxy
 ```bash
 cp deploy/nginx-horizen.conf /etc/nginx/sites-available/horizen
 ln -sf /etc/nginx/sites-available/horizen /etc/nginx/sites-enabled/horizen
@@ -93,7 +87,7 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 ```
 
-### 9. Firewall
+### 8. Firewall
 ```bash
 ufw allow OpenSSH
 ufw allow 'Nginx HTTP'
@@ -111,9 +105,10 @@ visitors can connect MetaMask, use the faucet, and stake.
 cd /opt/horizen-staking
 sudo -u horizen git pull
 .venv/bin/pip install -r requirements.txt gunicorn   # if deps changed
-.venv/bin/python -m scripts.compile                  # if contracts changed
 systemctl restart horizen-staking
 ```
+> Contract changes? Recompile **on your laptop** (`python -m scripts.compile`),
+> commit the updated `build/*.json`, then `git pull` on the server.
 
 ## Notes / caveats (HTTP-only demo)
 - **No HTTPS** (no domain), so `SESSION_COOKIE_SECURE=0`. The public staking flow

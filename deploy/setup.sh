@@ -13,16 +13,12 @@ APP_DIR="/opt/horizen-staking"
 TSTZEN="0xF5574BC04D18DAe1939066d1D52C7fCCC93112b6"
 STAKING="0x3656Aa266082fdDedbdDD44e387704351F5a5199"
 
-echo ">>> [1/8] Base packages + Node"
+echo ">>> [1/7] Base packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get -y -qq install python3 python3-venv python3-pip nginx git curl ufw >/dev/null
-if ! command -v node >/dev/null; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null
-  apt-get -y -qq install nodejs >/dev/null
-fi
 
-echo ">>> [2/8] App user + code"
+echo ">>> [2/7] App user + code"
 id horizen &>/dev/null || adduser --system --group --home "$APP_DIR" horizen
 if [ -d "$APP_DIR/.git" ]; then
   git -C "$APP_DIR" pull --ff-only
@@ -31,16 +27,14 @@ else
 fi
 cd "$APP_DIR"
 
-echo ">>> [3/8] Python venv + dependencies"
+echo ">>> [3/7] Python venv + dependencies"
 python3 -m venv .venv
 .venv/bin/pip install --upgrade pip -q
 .venv/bin/pip install -q -r requirements.txt gunicorn
 
-echo ">>> [4/8] Compile contract ABIs"
-npm install --silent
-.venv/bin/python -m scripts.compile
+# Contract ABIs ship pre-compiled in build/ — no Node or solc download needed.
 
-echo ">>> [5/8] .env (live mainnet contracts; admin locked; HTTP demo)"
+echo ">>> [4/7] .env (live mainnet contracts; admin locked; HTTP demo)"
 if [ ! -f .env ]; then
   SECRET="$(.venv/bin/python -c 'import secrets; print(secrets.token_hex(32))')"
   cat > .env <<EOF
@@ -66,19 +60,19 @@ fi
 chown -R horizen:horizen "$APP_DIR"
 chmod 600 .env
 
-echo ">>> [6/8] systemd service"
+echo ">>> [5/7] systemd service"
 cp deploy/horizen-staking.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now horizen-staking
 systemctl restart horizen-staking
 
-echo ">>> [7/8] nginx reverse proxy"
+echo ">>> [6/7] nginx reverse proxy"
 cp deploy/nginx-horizen.conf /etc/nginx/sites-available/horizen
 ln -sf /etc/nginx/sites-available/horizen /etc/nginx/sites-enabled/horizen
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
-echo ">>> [8/8] Firewall"
+echo ">>> [7/7] Firewall"
 ufw allow OpenSSH >/dev/null
 ufw allow 'Nginx HTTP' >/dev/null
 ufw --force enable >/dev/null

@@ -8,8 +8,9 @@ venv/
 # Node (OpenZeppelin vendored for compilation)
 node_modules/
 
-# Build artifacts (compiled ABIs/bytecode)
-build/
+# Build artifacts (compiled ABIs/bytecode) are committed so deploys need no
+# Solidity toolchain. Recompile with `python -m scripts.compile` after any
+# contract change.
 
 # Secrets & local config
 .env
