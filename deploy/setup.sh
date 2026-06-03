@@ -20,8 +20,14 @@ apt-get -y -qq install python3 python3-venv python3-pip nginx git curl ufw >/dev
 
 echo ">>> [2/7] App user + code"
 id horizen &>/dev/null || adduser --system --group --home "$APP_DIR" horizen
+# The repo is owned by the horizen user but git runs here as root; mark it
+# trusted so the update doesn't trip git's "dubious ownership" guard.
+git config --global --add safe.directory "$APP_DIR"
 if [ -d "$APP_DIR/.git" ]; then
-  git -C "$APP_DIR" pull --ff-only
+  # Hard-reset to remote main: robust on a --depth 1 clone and idempotent
+  # (untracked .env / .venv / node_modules are gitignored, so they survive).
+  git -C "$APP_DIR" fetch --depth 1 origin main
+  git -C "$APP_DIR" reset --hard origin/main
 else
   git clone --depth 1 "$REPO_URL" "$APP_DIR"
 fi
