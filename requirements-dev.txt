@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# Dev / CI tooling
+pytest==8.3.4
+pip-audit==2.7.3   # run `pip-audit -r requirements.txt` in CI to catch dep CVEs

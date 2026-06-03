@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Horizen · ZEN Staking</title>
+
+  <!-- Set theme before first paint to avoid a flash of the wrong theme. -->
+  <script nonce="{{ csp_nonce }}">
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+
+  <!-- Fonts: Fraunces (editorial display) · Satoshi (UI) · JetBrains Mono (figures) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body data-deployed="{{ 'true' if deployed else 'false' }}">
+  <!-- Atmosphere layers -->
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="grid-lines" aria-hidden="true"></div>
+  <div class="horizon-line" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- ───────────────────────── Header ───────────────────────── -->
+  <header class="nav">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-text">HORIZEN<span class="brand-sub">/ staking</span></span>
+    </a>
+
+    <div class="nav-right">
+      <button class="theme-toggle" id="theme-btn" aria-label="Toggle light / dark mode" title="Toggle light / dark">
+        <span class="ti ti-sun" aria-hidden="true">☀</span>
+        <span class="ti ti-moon" aria-hidden="true">☾</span>
+      </button>
+      <div class="net-pill" id="net-pill" hidden>
+        <span class="dot"></span><span id="net-label">Horizen L3</span>
+      </div>
+      <button class="btn btn-connect" id="connect-btn">
+        <span class="connect-ico" aria-hidden="true"></span>
+        <span id="connect-label">Connect Wallet</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ───────────────────────── Hero ───────────────────────── -->
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span>Horizen 2.0 · ZenIP 42407 reward program</p>
+        <h1 class="hero-title">Stake <em>ZEN</em>.<br />Earn on <em>Horizen</em>.</h1>
+        <p class="hero-lede">
+          A fixed pool of <strong id="hero-pool">50,000</strong> tstZEN is shared
+          every epoch among everyone staking — strictly in proportion to your
+          share of the pool. Settled in
+          <strong id="hero-cadence">30-minute</strong> snapshots.
+        </p>
+        <ul class="trust">
+          <li>Non-custodial</li>
+          <li>On-chain settlement</li>
+          <li>Pro-rata rewards</li>
+        </ul>
+      </div>
+
+      <!-- Live pool feature card -->
+      <aside class="pool-feature">
+        <div class="pf-head">
+          <span class="pf-eyebrow">Live reward epoch</span>
+          <span class="pf-badge"><span class="dot"></span>streaming</span>
+        </div>
+        <div class="ring-wrap">
+          <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+            <defs>
+              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop class="rs1" offset="0%" />
+                <stop class="rs2" offset="100%" />
+              </linearGradient>
+            </defs>
+            <circle class="ring-track" cx="60" cy="60" r="52" />
+            <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52" />
+          </svg>
+          <div class="ring-center">
+            <span class="ring-count mono" id="epoch-countdown">—</span>
+            <span class="ring-sub">to next snapshot</span>
+          </div>
+        </div>
+        <div class="pf-meta">
+          <div>
+            <span class="pf-label">Current epoch</span>
+            <span class="pf-value mono" id="epoch-num">—</span>
+          </div>
+          <div class="pf-sep"></div>
+          <div>
+            <span class="pf-label">Epoch length</span>
+            <span class="pf-value mono" id="epoch-length">—</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- Wrong-network banner -->
+    <div class="banner warn" id="wrong-network-banner" hidden>
+      <span class="banner-ico">⚠</span>
+      <span class="banner-text">Your wallet is on the wrong network. Switch to
+        <strong id="wn-name">Horizen Local</strong> to stake — otherwise transactions
+        go to the wrong chain.</span>
+      <button class="btn btn-outline btn-sm" id="switch-network-btn">Switch network</button>
+    </div>
+
+    <!-- ───────────────────────── Market strip ───────────────────────── -->
+    <section class="market">
+      <div class="m-cell">
+        <span class="m-label">Total staked</span>
+        <span class="m-value mono" id="g-total">—</span>
+        <span class="m-unit">tstZEN</span>
+      </div>
+      <div class="m-cell">
+        <span class="m-label">Live APR</span>
+        <span class="m-value mono accent" id="g-apr">—</span>
+        <span class="m-unit">annualized</span>
+      </div>
+      <div class="m-cell">
+        <span class="m-label">Reward pool left</span>
+        <span class="m-value mono gold" id="g-reserve">—</span>
+        <span class="m-unit">tstZEN</span>
+      </div>
+      <div class="m-cell">
+        <span class="m-label">Per-epoch reward</span>
+        <span class="m-value mono" id="g-perepoch">—</span>
+        <span class="m-unit">tstZEN / epoch</span>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── Board ───────────────────────── -->
+    <section class="board">
+
+      <!-- LEFT: your position + actions -->
+      <div class="panel position">
+        <div class="panel-head">
+          <div class="panel-head-l">
+            <h2 class="panel-title">Your position</h2>
+            <p class="panel-hint disconnected-only">Connect your wallet to load live balances.</p>
+          </div>
+          <span class="panel-tag" id="addr-tag" hidden></span>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat">
+            <span class="s-label">Staked</span>
+            <span class="s-value mono" id="u-staked">0.00</span>
+            <span class="s-unit">tstZEN</span>
+          </div>
+          <div class="stat">
+            <span class="s-label">Pool share</span>
+            <span class="s-value mono" id="u-share">0.00%</span>
+            <span class="s-unit">of total</span>
+          </div>
+          <div class="stat stat-accent">
+            <span class="s-label">Claimable</span>
+            <span class="s-value mono gold" id="u-pending">0.00</span>
+            <span class="s-unit">tstZEN</span>
+          </div>
+        </div>
+
+        <!-- Action tabs -->
+        <div class="tabs" role="tablist">
+          <button class="tab is-active" data-tab="stake" role="tab">Stake</button>
+          <button class="tab" data-tab="unstake" role="tab">Unstake</button>
+          <button class="tab" data-tab="claim" role="tab">Claim</button>
+          <span class="tab-glow" aria-hidden="true"></span>
+        </div>
+
+        <!-- Stake pane -->
+        <div class="tabpane is-active" data-pane="stake">
+          <label class="field">
+            <span class="field-top">
+              <span>Amount to stake</span>
+              <span class="field-bal">Wallet <span class="mono" id="bal-wallet">0.00</span></span>
+            </span>
+            <span class="input-wrap">
+              <input id="stake-input" class="mono" inputmode="decimal" placeholder="0.0" autocomplete="off" />
+              <button class="max" data-max="stake">MAX</button>
+              <span class="input-suffix">tstZEN</span>
+            </span>
+          </label>
+          <button class="btn btn-primary btn-block" id="stake-btn" disabled>Connect wallet to stake</button>
+          <p class="hint">First stake needs a one-time approval, then the stake transaction.</p>
+        </div>
+
+        <!-- Unstake pane -->
+        <div class="tabpane" data-pane="unstake">
+          <label class="field">
+            <span class="field-top">
+              <span>Amount to unstake</span>
+              <span class="field-bal">Staked <span class="mono" id="bal-staked">0.00</span></span>
+            </span>
+            <span class="input-wrap">
+              <input id="unstake-input" class="mono" inputmode="decimal" placeholder="0.0" autocomplete="off" />
+              <button class="max" data-max="unstake">MAX</button>
+              <span class="input-suffix">tstZEN</span>
+            </span>
+          </label>
+          <button class="btn btn-ghost btn-block" id="unstake-btn" disabled>Connect wallet to unstake</button>
+          <p class="hint">Unstaking is instant. You keep every reward already earned.</p>
+        </div>
+
+        <!-- Claim pane -->
+        <div class="tabpane" data-pane="claim">
+          <div class="claim-box">
+            <span class="claim-label">Rewards ready to claim</span>
+            <span class="claim-amount mono gold" id="claim-amount">0.00</span>
+            <span class="claim-unit">tstZEN</span>
+          </div>
+          <button class="btn btn-gold btn-block" id="claim-btn" disabled>Connect wallet to claim</button>
+          <p class="hint">Rewards accrue per finalized epoch and never expire.</p>
+        </div>
+      </div>
+
+      <!-- RIGHT: rail of mini-cards -->
+      <aside class="rail">
+        <div class="card faucet-card">
+          <div class="card-row">
+            <div>
+              <span class="card-title">Test faucet</span>
+              <span class="card-sub">Grab 1,000 tstZEN to try staking.</span>
+            </div>
+            <button class="btn btn-outline" id="faucet-btn" disabled>Faucet</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <span class="card-title">Add to MetaMask</span>
+          <span class="card-sub">One click to set up your wallet.</span>
+          <div class="dual-btns">
+            <button class="btn btn-outline btn-sm" id="add-network-btn">＋ Network</button>
+            <button class="btn btn-outline btn-sm" id="add-token-btn">＋ tstZEN</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <span class="card-title">Pool details</span>
+          <dl class="poolinfo">
+            <div><dt>Annual budget</dt><dd class="mono" id="p-year">50,000</dd></div>
+            <div><dt>Per epoch</dt><dd class="mono" id="p-epoch">—</dd></div>
+            <div><dt>Distributed</dt><dd class="mono" id="p-distributed">—</dd></div>
+            <div><dt>Pool left</dt><dd class="mono gold" id="p-reserve">—</dd></div>
+            <div><dt>Contract</dt><dd><a id="p-contract" class="mono link" target="_blank" rel="noopener">—</a></dd></div>
+          </dl>
+        </div>
+      </aside>
+    </section>
+
+    <footer class="foot">
+      <span>tstZEN is a test token — not real ZEN. For evaluating the staking program on Horizen L3.</span>
+      <a class="link" id="foot-explorer" target="_blank" rel="noopener">Block explorer ↗</a>
+    </footer>
+  </main>
+
+  <!-- Toast / tx status -->
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"
+    integrity="sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM"
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

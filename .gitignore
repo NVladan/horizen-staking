@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node (OpenZeppelin vendored for compilation)
+node_modules/
+
+# Build artifacts (compiled ABIs/bytecode)
+build/
+
+# Secrets & local config
+.env
+.claude/settings.local.json
+
+# Runtime logs
+logs/
+
+# OS
+Thumbs.db
+.DS_Store

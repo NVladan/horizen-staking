@@ -1,0 +1,10 @@
+{
+  "name": "horizen-tstzen-staking",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "OpenZeppelin contracts vendored for solc compilation only (no JS build).",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.1.0"
+  }
+}

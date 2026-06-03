@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Horizen · Admin</title>
+
+  <script nonce="{{ csp_nonce }}">
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body data-authed="{{ 'true' if authed else 'false' }}">
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="grid-lines" aria-hidden="true"></div>
+  <div class="horizon-line" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="nav">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-text">HORIZEN<span class="brand-sub">/ admin</span></span>
+    </a>
+    <div class="nav-right">
+      <button class="theme-toggle" id="theme-btn" aria-label="Toggle light / dark">
+        <span class="ti ti-sun" aria-hidden="true">☀</span>
+        <span class="ti ti-moon" aria-hidden="true">☾</span>
+      </button>
+      {% if authed %}
+      <div class="net-pill" id="net-pill" hidden>
+        <span class="dot"></span><span id="net-label">—</span>
+      </div>
+      <button class="btn btn-connect" id="connect-btn">
+        <span class="connect-ico" aria-hidden="true"></span>
+        <span id="connect-label">Connect Wallet</span>
+      </button>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="wrap admin-wrap">
+  {% if not authed %}
+    <!-- ───────── Sign-in gate ───────── -->
+    <section class="gate">
+      <div class="card gate-card">
+        <span class="lock-badge" aria-hidden="true">🔒</span>
+        <p class="eyebrow"><span class="eyebrow-dot"></span>Operator console</p>
+        <h1 class="hero-title">Restricted</h1>
+        <p class="hero-lede">
+          This deploy console is locked to the owner wallet
+          <span class="mono owner-addr">{{ admin_address[:6] }}…{{ admin_address[-4:] }}</span>.
+          Connect that wallet and sign a message to prove ownership — it's
+          off-chain and costs no gas.
+        </p>
+        <div class="step-foot">
+          <button class="btn btn-primary" id="s-signin">Sign in with wallet</button>
+          <span class="step-status" id="st-signin"></span>
+        </div>
+      </div>
+    </section>
+  {% else %}
+    <!-- ───────── Wizard ───────── -->
+    <section class="admin-head">
+      <p class="eyebrow"><span class="eyebrow-dot"></span>Operator console
+        · <a class="link" id="logout-link" href="#">sign out</a></p>
+      <h1 class="hero-title">Deploy &amp; fund</h1>
+      <p class="hero-lede">
+        Deploy the <strong>tstZEN</strong> token and <strong>StakingPool</strong> to
+        <strong id="ah-network">Horizen</strong>, then seed the reward pool — all signed
+        in your own wallet. No private key ever touches the server.
+      </p>
+    </section>
+
+    <div class="banner warn" id="wrong-network-banner" hidden>
+      <span class="banner-ico">⚠</span>
+      <span class="banner-text">Your wallet is on the wrong network. Switch to
+        <strong id="wn-name">Horizen</strong> to deploy.</span>
+      <button class="btn btn-outline btn-sm" id="switch-network-btn">Switch network</button>
+    </div>
+
+    <div class="banner already-banner" id="already-banner" hidden>
+      <span class="banner-ico">✓</span>
+      <span class="banner-text">Contracts are already deployed and live.
+        <a class="link" href="/">Open the staking app →</a></span>
+    </div>
+
+    <!-- Manage the live pool (top up) -->
+    <div class="card manage-card" id="manage-card" hidden>
+      <span class="card-title">Reward pool — top up</span>
+      <span class="card-sub">Add tstZEN to extend the funded program. Owner-only; each top-up lengthens how long rewards keep accruing.</span>
+      <dl class="poolinfo manage-info">
+        <div><dt>Pool left to be earned</dt><dd class="mono gold" id="m-poolleft">—</dd></div>
+        <div><dt>Distributed so far</dt><dd class="mono" id="m-distributed">—</dd></div>
+      </dl>
+      <label class="field">
+        <span class="field-top"><span>Amount to add</span></span>
+        <span class="input-wrap">
+          <input id="topup-input" class="mono" inputmode="decimal" placeholder="0.0" autocomplete="off" />
+          <span class="input-suffix">tstZEN</span>
+        </span>
+      </label>
+      <div class="step-foot">
+        <button class="btn btn-gold" id="s-topup" disabled>Connect wallet to top up</button>
+        <span class="step-status" id="st-topup"></span>
+      </div>
+    </div>
+
+    <p class="wizard-head" id="wizard-head" hidden>Or deploy a new staking contract (upgrade to v2):</p>
+
+    <label class="reuse-toggle" id="reuse-toggle" hidden>
+      <input type="checkbox" id="reuse-token" />
+      <span>Reuse the existing tstZEN token
+        (<span class="mono" id="reuse-addr">—</span>) — deploy only a new
+        StakingPool, so wallet balances &amp; faucet history carry over.</span>
+    </label>
+
+    <ol class="wizard">
+      <li class="step" id="step-connect">
+        <div class="step-no">1</div>
+        <div class="step-body">
+          <h3 class="step-title">Connect your wallet</h3>
+          <p class="step-desc">This wallet becomes the contract <em>owner</em> — able to fund rewards.</p>
+          <div class="step-foot">
+            <button class="btn btn-primary" id="s-connect">Connect Wallet</button>
+            <span class="step-status" id="st-connect"></span>
+          </div>
+        </div>
+      </li>
+
+      <li class="step is-locked" id="step-token">
+        <div class="step-no">2</div>
+        <div class="step-body">
+          <h3 class="step-title">Deploy tstZEN token</h3>
+          <p class="step-desc">An ERC-20 test token with an owner mint and a public faucet.</p>
+          <div class="step-foot">
+            <button class="btn btn-primary" id="s-token" disabled>Deploy tstZEN</button>
+            <span class="step-status" id="st-token"></span>
+          </div>
+          <div class="addr-out mono" id="out-token" hidden></div>
+        </div>
+      </li>
+
+      <li class="step is-locked" id="step-pool">
+        <div class="step-no">3</div>
+        <div class="step-body">
+          <h3 class="step-title">Deploy StakingPool</h3>
+          <p class="step-desc">The staking contract: <span id="ah-reward">50,000</span> tstZEN/yr, <span id="ah-epoch">30-min</span> epoch snapshots. Addresses are saved to the app automatically.</p>
+          <div class="step-foot">
+            <button class="btn btn-primary" id="s-pool" disabled>Deploy StakingPool</button>
+            <span class="step-status" id="st-pool"></span>
+          </div>
+          <div class="addr-out mono" id="out-pool" hidden></div>
+        </div>
+      </li>
+
+      <li class="step is-locked" id="step-fund">
+        <div class="step-no">4</div>
+        <div class="step-body">
+          <h3 class="step-title">Fund the reward pool</h3>
+          <p class="step-desc">Mint <span id="ah-reward2">50,000</span> tstZEN and load it into the pool reserve (mint → approve → fund: 3 signatures).</p>
+          <div class="step-foot">
+            <button class="btn btn-gold" id="s-fund" disabled>Fund reward pool</button>
+            <span class="step-status" id="st-fund"></span>
+          </div>
+        </div>
+      </li>
+    </ol>
+
+    <div class="done-card card" id="done-card" hidden>
+      <span class="card-title">✓ Deployment complete</span>
+      <span class="card-sub">tstZEN + StakingPool are live and funded.</span>
+      <a class="btn btn-primary" href="/" style="margin-top:14px;align-self:flex-start">Open the staking app →</a>
+    </div>
+  {% endif %}
+
+    <footer class="foot">
+      <span>Admin console · signs every step in your wallet. tstZEN is a test token.</span>
+      <a class="link" id="foot-explorer" target="_blank" rel="noopener">Block explorer ↗</a>
+    </footer>
+  </main>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"
+    integrity="sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM"
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

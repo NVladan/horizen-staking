@@ -1,0 +1,2 @@
+# Normalize line endings to LF in the repo; git converts per-platform on checkout.
+* text=auto eol=lf
